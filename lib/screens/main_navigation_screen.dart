@@ -9,6 +9,8 @@ import 'package:office_throne/screens/home/home_screen.dart';
 import 'package:office_throne/screens/leaderboard/leaderboard_screen.dart';
 import 'package:office_throne/screens/settings/settings_screen.dart';
 import 'package:office_throne/screens/stats/stats_screen.dart';
+import 'package:office_throne/services/achievement_service.dart';
+import 'package:office_throne/models/achievement.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -19,7 +21,7 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
-
+  final AchievementService _achievementService = AchievementService();
   @override
   void initState() {
     super.initState();
@@ -139,7 +141,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final double totalDurationInMinutes = totalDurationInSeconds / 60.0;
     
     final double score = totalDurationInMinutes > 0 ? totalWeightInGrams / totalDurationInMinutes : 0.0;
-
+    
     try {
       final leaderboardDocRef = FirebaseFirestore.instance.collection('leaderboard').doc(user.uid);
       await leaderboardDocRef.set({
@@ -150,6 +152,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     } catch (e) {
       print('Error updating leaderboard in Firestore: $e');
     }
+      final newlyUnlocked = await _achievementService.checkAndUnlockAchievements(log);
+
+  // Показваме нотификация за всяко ново постижение
+  if (newlyUnlocked.isNotEmpty && mounted) {
+    for (var achievement in newlyUnlocked) {
+      // Изчакваме малко между всяка нотификация, ако са повече от една
+      await Future.delayed(const Duration(milliseconds: 500));
+      _showAchievementUnlocked(achievement);
+    }
+  }
   }
 
   // --- BUILD МЕТОД ---
@@ -183,4 +195,35 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
     );
   }
+  void _showAchievementUnlocked(Achievement achievement) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      backgroundColor: Colors.amber[700],
+      duration: const Duration(seconds: 4),
+      content: Row(
+        children: [
+          Icon(achievement.icon, color: Colors.white, size: 40),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'ПОСТИЖЕНИЕ ОТКЛЮЧЕНО!',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                Text(
+                  achievement.name,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 }

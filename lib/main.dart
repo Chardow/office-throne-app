@@ -10,6 +10,8 @@ import 'package:office_throne/models/session_log.dart';
 import 'package:office_throne/screens/main_navigation_screen.dart';
 import 'package:office_throne/screens/onboarding/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import 'package:office_throne/providers/theme_provider.dart';
 
 // --- НОВА СТЪПКА: Глобална променлива ---
 // Ще я инициализираме в main() и ще сме сигурни, че има стойност.
@@ -40,7 +42,12 @@ void main() async {
   await Hive.openBox<SessionLog>('sessions');
 
   // Стартираме приложението без да подаваме параметри
-  runApp(const OfficeThroneApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const OfficeThroneApp(),
+    ),
+  );
 }
 
 class OfficeThroneApp extends StatelessWidget {
@@ -49,17 +56,33 @@ class OfficeThroneApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Офис Трон',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.brown),
-        useMaterial3: true,
-      ),
-      // Използваме глобалната променлива, за която сме сигурни, че е инициализирана
-      home: showOnboarding 
-            ? const OnboardingScreen() 
-            : const MainNavigationScreen(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Офис Трон',
+          // Дефинираме и светла, и тъмна тема
+          theme: ThemeData(
+            brightness: Brightness.light,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.brown),
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.brown,
+              brightness: Brightness.dark,
+            ),
+            useMaterial3: true,
+          ),
+          // Избираме коя тема да се използва на база стойността от провайдъра
+          themeMode: themeProvider.isDarkTheme ? ThemeMode.dark : ThemeMode.light,
+          
+          home: showOnboarding 
+                ? const OnboardingScreen() 
+                : const MainNavigationScreen(),
+        );
+      },
     );
   }
 }
